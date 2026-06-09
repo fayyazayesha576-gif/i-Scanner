@@ -16,7 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
-# Download model files directly from GitHub LFS
 RUN curl -L -o attention_fusion_best.pth \
     "https://media.githubusercontent.com/media/fayyazayesha576-gif/i-Scanner/main/backend/attention_fusion_best.pth"
 
@@ -26,7 +25,7 @@ RUN curl -L -o meta_scaler.pkl \
 RUN curl -L -o best_thresholds.npy \
     "https://media.githubusercontent.com/media/fayyazayesha576-gif/i-Scanner/main/backend/best_thresholds.npy"
 
-RUN ls -lh && echo "Model files downloaded"
+RUN ls -lh
 
 EXPOSE 8000
 
