@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iScanner — Retinal Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #020810;
+  --teal:     #00e5cc;
+  --teal-dim: #00bfaa44;
+  --cyan:     #00cfff;
+  --red:      #ff3a5c;
+  --green:    #1effa6;
+  --text:     #c8dff0;
+  --text-dim: #4a6a88;
+  --border:   #0a2a3a;
+  --glow:     0 0 24px #00e5cc55;
+  --glow-lg:  0 0 60px #00e5cc33, 0 0 120px #00cfff22;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);font-family:'Rajdhani',sans-serif;color:var(--text);overflow-x:hidden;cursor:none;}
+
+#cursor{width:20px;height:20px;border:1.5px solid var(--teal);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .15s,height .15s,background .15s;box-shadow:0 0 10px var(--teal);}
+#cursor-dot{width:4px;height:4px;background:var(--teal);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);}
+#neural-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+/* ══ LANDING ══ */
+#landing{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 60%,#001a2e 0%,var(--bg) 70%);transition:opacity .8s ease,transform .8s ease;}
+#landing.exit{opacity:0;transform:scale(1.06);pointer-events:none;}
+.landing-title{font-family:'Orbitron',sans-serif;font-size:clamp(3rem,8vw,7rem);font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:transparent;background:linear-gradient(135deg,#00e5cc,#00cfff,#1effa6);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 30px #00e5cc66);margin-bottom:.2em;}
+.landing-sub{font-size:1rem;letter-spacing:.35em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4rem;}
+.fundus-orb-wrap{position:relative;cursor:pointer;}
+.ring{position:absolute;border-radius:50%;border:1px solid var(--teal-dim);animation:ring-pulse 3s ease-in-out infinite;pointer-events:none;}
+.ring:nth-child(1){inset:-30px;animation-delay:0s}
+.ring:nth-child(2){inset:-60px;animation-delay:.8s;border-color:#00cfff22}
+.ring:nth-child(3){inset:-90px;animation-delay:1.6s;border-color:#1effa611}
+@keyframes ring-pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.9;transform:scale(1.02)}}
+.fundus-orb{width:220px;height:220px;border-radius:50%;border:2px solid var(--teal);box-shadow:0 0 0 12px #00e5cc08,0 0 0 24px #00e5cc05,var(--glow-lg);position:relative;overflow:hidden;transition:transform .4s,box-shadow .4s;}
+.fundus-orb:hover{transform:scale(1.06);box-shadow:0 0 0 16px #00e5cc12,0 0 80px #00e5ccaa,0 0 160px #00cfff44;}
+.fundus-orb svg{width:100%;height:100%;position:absolute;inset:0;}
+.click-hint{margin-top:2.5rem;font-size:.75rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);animation:blink-hint 2.5s ease-in-out infinite;}
+@keyframes blink-hint{0%,100%{opacity:.4}50%{opacity:.9}}
+
+/* ══ DASHBOARD ══ */
+#dashboard{position:fixed;inset:0;z-index:5;opacity:0;pointer-events:none;overflow-y:auto;transition:opacity .8s ease;background:radial-gradient(ellipse at 30% 0%,#001a2e 0%,var(--bg) 60%);}
+#dashboard.visible{opacity:1;pointer-events:all;}
+.dash-header{display:flex;align-items:center;justify-content:space-between;padding:1.4rem 2.5rem;border-bottom:1px solid var(--border);background:#020810ee;backdrop-filter:blur(12px);position:sticky;top:0;z-index:20;}
+.dash-logo{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:700;letter-spacing:.2em;color:var(--teal);text-shadow:var(--glow);}
+.dash-status{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--green);display:flex;align-items:center;gap:.5rem;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:status-blink 2s ease infinite;}
+@keyframes status-blink{0%,100%{opacity:1}50%{opacity:.4}}
+.dash-body{max-width:1280px;margin:0 auto;padding:2rem 2rem 4rem;}
+.section-label{font-size:.65rem;letter-spacing:.3em;text-transform:uppercase;color:var(--teal);margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--teal-dim),transparent);}
+
+/* Upload */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:2rem;}
+.upload-card{aspect-ratio:1;border-radius:50%;border:1.5px solid var(--border);background:radial-gradient(circle at 50% 50%,#030f1e,var(--bg));position:relative;overflow:hidden;cursor:pointer;transition:border-color .3s,box-shadow .3s,transform .3s;display:flex;flex-direction:column;align-items:center;justify-content:center;max-width:300px;margin:0 auto;width:100%;}
+.upload-card:hover,.upload-card.dragover{border-color:var(--teal);box-shadow:0 0 40px #00e5cc33,0 0 80px #00e5cc18,inset 0 0 40px #00e5cc08;transform:scale(1.03);}
+.upload-card.has-image{border-color:var(--cyan);box-shadow:0 0 30px #00cfff44;}
+.upload-card::before{content:'';position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(var(--teal) 0deg,transparent 60deg,transparent 360deg);opacity:0;transition:opacity .3s;animation:spin-ring 2.5s linear infinite;}
+.upload-card:hover::before{opacity:.6;}
+@keyframes spin-ring{to{transform:rotate(360deg)}}
+.upload-card-inner{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;width:100%;height:100%;border-radius:50%;overflow:hidden;}
+.upload-preview{width:100%;height:100%;object-fit:cover;border-radius:50%;position:absolute;inset:0;opacity:0;transition:opacity .4s;}
+.upload-preview.visible{opacity:1;}
+.upload-icon{font-size:2.5rem;filter:drop-shadow(0 0 8px var(--teal));transition:transform .3s;}
+.upload-card:hover .upload-icon{transform:scale(1.15);}
+.upload-label-text{font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:.15em;color:var(--text-dim);text-transform:uppercase;text-align:center;}
+.upload-hint{font-size:.6rem;letter-spacing:.1em;color:#2a4a60;text-align:center;}
+input[type=file]{display:none}
+
+/* Meta */
+.meta-row{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;}
+.field-group{display:flex;flex-direction:column;gap:.5rem;}
+.field-label{font-size:.65rem;letter-spacing:.25em;text-transform:uppercase;color:var(--text-dim);}
+.field-input{background:#030d18;border:1px solid var(--border);border-radius:4px;padding:.75rem 1rem;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:1rem;outline:none;width:100%;transition:border-color .3s,box-shadow .3s;}
+.field-input:focus{border-color:var(--teal);box-shadow:0 0 12px #00e5cc22;}
+select.field-input option{background:#030d18;}
+
+/* Analyze */
+.analyze-btn{width:100%;padding:1rem;background:linear-gradient(135deg,#00e5cc18,#00cfff10);border:1px solid var(--teal);border-radius:4px;color:var(--teal);font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:.25em;text-transform:uppercase;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;margin-bottom:2rem;}
+.analyze-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--teal),var(--cyan));opacity:0;transition:opacity .3s;}
+.analyze-btn:hover::before{opacity:.12;}
+.analyze-btn:hover{box-shadow:0 0 30px #00e5cc44,0 0 60px #00e5cc22;transform:translateY(-1px);}
+.analyze-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.analyze-btn span{position:relative;z-index:1;}
+
+/* Loading */
+#loading-overlay{position:fixed;inset:0;z-index:100;background:#020810ee;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;opacity:0;pointer-events:none;transition:opacity .4s;}
+#loading-overlay.visible{opacity:1;pointer-events:all;}
+.scan-eye{width:120px;height:120px;border-radius:50%;border:2px solid var(--teal);box-shadow:0 0 30px #00e5cc55;position:relative;animation:scan-pulse 1.5s ease-in-out infinite;}
+.scan-eye::before{content:'';position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--teal) 0deg,transparent 90deg,transparent 360deg);animation:spin-ring 1s linear infinite;}
+.scan-beam{position:absolute;width:2px;background:linear-gradient(to bottom,transparent,var(--teal),transparent);height:100%;left:50%;animation:scan-beam 1.5s ease-in-out infinite;}
+@keyframes scan-beam{0%,100%{transform:translateX(-50%) scaleY(1);opacity:.8}50%{transform:translateX(-50%) scaleY(.3);opacity:.3}}
+@keyframes scan-pulse{0%,100%{box-shadow:0 0 30px #00e5cc55}50%{box-shadow:0 0 60px #00e5ccaa}}
+.loading-text{font-family:'Orbitron',sans-serif;font-size:.75rem;letter-spacing:.3em;color:var(--teal);text-transform:uppercase;animation:text-flicker 1.5s ease infinite;}
+@keyframes text-flicker{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ══ RESULTS ══ */
+#results-section{display:none;}
+#results-section.visible{display:block;}
+
+.summary-card{border:1px solid var(--border);border-radius:12px;background:#030d18;padding:1.5rem;margin-bottom:2rem;display:flex;gap:2rem;align-items:center;}
+.summary-icon{font-size:3rem;filter:drop-shadow(0 0 12px currentColor);flex-shrink:0;}
+.summary-icon.clear{color:var(--green)}.summary-icon.alert{color:var(--red)}
+.summary-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:600;margin-bottom:.4rem;}
+.summary-title.clear{color:var(--green)}.summary-title.alert{color:var(--red)}
+.summary-desc{font-size:.85rem;color:var(--text-dim);line-height:1.6;}
+.detected-tags{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;}
+.detected-tag{font-size:.65rem;letter-spacing:.1em;padding:.25rem .75rem;border-radius:20px;text-transform:uppercase;background:#ff3a5c18;color:var(--red);border:1px solid #ff3a5c44;}
+
+/* Eye cards */
+.eye-results-grid{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-bottom:2rem;}
+.eye-card{border:1px solid var(--border);border-radius:12px;background:#030d18;overflow:hidden;transition:border-color .3s;}
+.eye-card:hover{border-color:#0a3a50;}
+.eye-card-header{padding:.9rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#020a14;}
+.eye-card-title{font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:.2em;color:var(--teal);}
+.heatmap-toggle{font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);cursor:pointer;padding:.3rem .7rem;border:1px solid var(--border);border-radius:3px;transition:all .3s;user-select:none;}
+.heatmap-toggle:hover,.heatmap-toggle.active{color:var(--teal);border-color:var(--teal);box-shadow:0 0 8px #00e5cc33;}
+.eye-image-wrap{position:relative;width:100%;padding-bottom:100%;height:0;overflow:hidden;background:#000;}
+.eye-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.eye-img.heatmap-layer{opacity:0;transition:opacity .5s ease;}
+.eye-img.heatmap-layer.shown{opacity:1;}
+
+/* Disease matrix */
+.matrix-wrap{border:1px solid var(--border);border-radius:12px;background:#030d18;overflow:hidden;margin-bottom:2rem;}
+.matrix-head{padding:.9rem 1.4rem;border-bottom:1px solid var(--border);background:#020a14;display:flex;align-items:center;justify-content:space-between;}
+.matrix-head-title{font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:.2em;color:var(--teal);}
+.matrix-table{width:100%;border-collapse:collapse;}
+.matrix-table th{padding:.7rem 1.2rem;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border);text-align:left;background:#02090f;white-space:nowrap;}
+.matrix-table th:nth-child(n+2){text-align:center;}
+.matrix-table td{padding:.7rem 1.2rem;border-bottom:1px solid #05151f;vertical-align:middle;}
+.matrix-table tr:last-child td{border-bottom:none;}
+.matrix-table tr:hover td{background:#04111c;}
+.matrix-table tr.row-detected td{background:#180509;}
+.matrix-table tr.row-detected:hover td{background:#1e060b;}
+.m-label{font-size:.85rem;color:var(--text);font-weight:500;}
+.m-label-code{font-family:'Orbitron',sans-serif;font-size:.55rem;color:var(--text-dim);margin-left:.4rem;letter-spacing:.1em;}
+.m-bar-cell{min-width:180px;}
+.m-bar-bg{width:100%;height:7px;background:#0a1a26;border-radius:4px;overflow:hidden;}
+.m-bar-fill{height:100%;border-radius:4px;width:0%;transition:width 1.2s cubic-bezier(.16,1,.3,1);background:linear-gradient(90deg,var(--teal),var(--cyan));}
+.m-bar-fill.hot{background:linear-gradient(90deg,var(--red),#ff6088);box-shadow:0 0 8px #ff3a5c55;}
+.m-pct{font-family:'Orbitron',sans-serif;font-size:.7rem;color:var(--text-dim);text-align:right;white-space:nowrap;min-width:52px;}
+.m-thresh{font-family:'Orbitron',sans-serif;font-size:.6rem;color:#1e3a4a;text-align:center;white-space:nowrap;}
+.m-badge{font-size:.55rem;letter-spacing:.1em;padding:.2rem .55rem;border-radius:3px;text-transform:uppercase;display:inline-block;white-space:nowrap;}
+.m-badge.pos{background:#ff3a5c22;color:var(--red);border:1px solid #ff3a5c44;}
+.m-badge.neg{background:#1effa615;color:var(--green);border:1px solid #1effa625;}
+
+/* Error */
+#error-toast{position:fixed;bottom:2rem;right:2rem;z-index:200;background:#1a0508;border:1px solid var(--red);border-radius:8px;padding:1rem 1.5rem;max-width:380px;color:var(--red);font-size:.85rem;box-shadow:0 0 30px #ff3a5c44;transform:translateY(100px);opacity:0;transition:all .4s;}
+#error-toast.visible{transform:translateY(0);opacity:1;}
+
+@media(max-width:700px){
+  .upload-grid,.eye-results-grid,.meta-row{grid-template-columns:1fr}
+  .dash-body{padding:1rem 1rem 4rem}
+  .m-bar-cell{min-width:80px}
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+<canvas id="neural-canvas"></canvas>
+
+<!-- ══ LANDING ══ -->
+<div id="landing">
+  <div class="landing-title">iScanner</div>
+  <div class="landing-sub">Retinal Intelligence System</div>
+
+  <div class="fundus-orb-wrap" id="fundus-btn">
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="fundus-orb">
+      <!-- Realistic fundus SVG -->
+      <svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="bg" cx="48%" cy="45%" r="50%">
+            <stop offset="0%" stop-color="#c05020"/>
+            <stop offset="35%" stop-color="#9a3010"/>
+            <stop offset="70%" stop-color="#7a1e08"/>
+            <stop offset="100%" stop-color="#3a0800"/>
+          </radialGradient>
+          <radialGradient id="disc" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#f5d090"/>
+            <stop offset="55%" stop-color="#e8a840"/>
+            <stop offset="100%" stop-color="#c07820"/>
+          </radialGradient>
+          <radialGradient id="macula" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#200000"/>
+            <stop offset="50%" stop-color="#5a1005"/>
+            <stop offset="100%" stop-color="#9a2808"/>
+          </radialGradient>
+          <radialGradient id="freflex" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffcc44" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#ffcc44" stop-opacity="0"/>
+          </radialGradient>
+          <clipPath id="cc"><circle cx="110" cy="110" r="108"/></clipPath>
+        </defs>
+
+        <!-- Fundus background -->
+        <circle cx="110" cy="110" r="108" fill="url(#bg)"/>
+        <!-- Lighter zone near disc -->
+        <ellipse cx="148" cy="108" rx="38" ry="30" fill="#b84018" opacity="0.5" clip-path="url(#cc)"/>
+
+        <!-- Blood vessels -->
+        <g clip-path="url(#cc)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Superior temporal artery -->
+          <path d="M148 108 Q135 90 118 75 Q100 60 78 52 Q60 46 38 44" stroke="#cc2200" stroke-width="2.2"/>
+          <path d="M118 75 Q105 68 88 64 Q70 60 50 58" stroke="#cc2200" stroke-width="1.3"/>
+          <path d="M100 65 Q90 60 80 55 Q68 52 55 51" stroke="#cc2200" stroke-width="0.9"/>
+          <!-- Superior nasal artery -->
+          <path d="M148 108 Q152 90 155 72 Q158 55 162 40" stroke="#cc2200" stroke-width="1.8"/>
+          <path d="M155 72 Q160 62 168 55 Q175 48 182 44" stroke="#cc2200" stroke-width="1.1"/>
+          <!-- Inferior temporal artery -->
+          <path d="M148 108 Q135 124 118 140 Q98 158 75 168 Q55 175 35 178" stroke="#cc2200" stroke-width="2.0"/>
+          <path d="M118 140 Q105 148 90 152 Q72 156 54 158" stroke="#cc2200" stroke-width="1.2"/>
+          <path d="M100 148 Q86 154 74 156 Q62 158 50 160" stroke="#cc2200" stroke-width="0.8"/>
+          <!-- Inferior nasal artery -->
+          <path d="M148 108 Q152 124 156 140 Q160 158 162 176" stroke="#cc2200" stroke-width="1.6"/>
+          <path d="M156 140 Q163 150 172 158 Q180 166 186 172" stroke="#cc2200" stroke-width="1.0"/>
+          <!-- Superior temporal vein -->
+          <path d="M148 106 Q132 88 114 72 Q94 56 70 47 Q50 40 28 38" stroke="#7a0010" stroke-width="2.0"/>
+          <path d="M114 72 Q100 65 84 60 Q66 55 46 52" stroke="#7a0010" stroke-width="1.2"/>
+          <!-- Inferior temporal vein -->
+          <path d="M148 110 Q132 127 114 144 Q94 162 70 172 Q50 180 30 182" stroke="#7a0010" stroke-width="1.9"/>
+          <path d="M114 144 Q100 152 84 157 Q68 162 50 164" stroke="#7a0010" stroke-width="1.1"/>
+          <!-- Nasal veins -->
+          <path d="M148 106 Q154 88 158 68 Q162 50 164 35" stroke="#7a0010" stroke-width="1.5"/>
+          <path d="M148 110 Q154 128 158 148 Q162 166 164 184" stroke="#7a0010" stroke-width="1.4"/>
+          <!-- Fine branches toward macula -->
+          <path d="M100 104 Q92 100 84 98 Q74 96 64 96" stroke="#993010" stroke-width="0.7"/>
+          <path d="M100 116 Q92 119 84 121 Q74 122 64 122" stroke="#993010" stroke-width="0.7"/>
+          <!-- Extra fine twigs -->
+          <path d="M90 62 Q82 57 74 54" stroke="#cc2200" stroke-width="0.6"/>
+          <path d="M78 52 Q70 48 62 47" stroke="#cc2200" stroke-width="0.5"/>
+          <path d="M90 152 Q82 156 74 158" stroke="#cc2200" stroke-width="0.6"/>
+          <path d="M75 168 Q66 173 58 175" stroke="#cc2200" stroke-width="0.5"/>
+        </g>
+
+        <!-- Macula -->
+        <circle cx="86" cy="110" r="16" fill="url(#macula)" clip-path="url(#cc)"/>
+        <!-- Foveal reflex -->
+        <circle cx="86" cy="110" r="5" fill="url(#freflex)" clip-path="url(#cc)"/>
+        <circle cx="84" cy="108" r="2" fill="#ffdd88" opacity="0.45" clip-path="url(#cc)"/>
+
+        <!-- Optic disc -->
+        <circle cx="148" cy="108" r="17" fill="url(#disc)" clip-path="url(#cc)"/>
+        <!-- Cup -->
+        <circle cx="149" cy="108" r="8" fill="#f0e0b0" opacity="0.75" clip-path="url(#cc)"/>
+        <!-- Disc rim highlight -->
+        <path d="M137 100 Q148 94 158 100" stroke="#f8e090" stroke-width="1.2" fill="none" opacity="0.6" clip-path="url(#cc)"/>
+
+        <!-- Outer vignette -->
+        <circle cx="110" cy="110" r="108" fill="none" stroke="#200400" stroke-width="10"/>
+        <circle cx="110" cy="110" r="105" fill="none" stroke="#3a0800" stroke-width="4" opacity="0.6"/>
+
+        <!-- Specular reflection -->
+        <ellipse cx="70" cy="72" rx="18" ry="12" fill="#ffffff" opacity="0.06" clip-path="url(#cc)"/>
+
+        <!-- iScanner teal scan line -->
+        <line x1="2" y1="110" x2="218" y2="110" stroke="#00e5cc" stroke-width="1.2" opacity="0.4" clip-path="url(#cc)">
+          <animate attributeName="y1" values="8;212;8" dur="3s" repeatCount="indefinite"/>
+          <animate attributeName="y2" values="8;212;8" dur="3s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.55;0;0.55" dur="3s" repeatCount="indefinite"/>
+        </line>
+      </svg>
+    </div>
+  </div>
+
+  <div class="click-hint">Click to begin analysis</div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div id="dashboard">
+  <div class="dash-header">
+    <div class="dash-logo">iScanner</div>
+    <div class="dash-status"><div class="status-dot"></div>System Online</div>
+  </div>
+
+  <div class="dash-body">
+
+    <div class="section-label">Fundus Image Input</div>
+    <div class="upload-grid">
+      <div>
+        <p style="text-align:center;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.8rem;">Left Eye</p>
+        <label class="upload-card" id="left-card" for="left-input">
+          <input type="file" id="left-input" accept="image/*"/>
+          <div class="upload-card-inner">
+            <img class="upload-preview" id="left-preview" src="" alt=""/>
+            <div id="left-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:.6rem;">
+              <div class="upload-icon">&#128065;</div>
+              <div class="upload-label-text">Left Fundus</div>
+              <div class="upload-hint">Click or drag image</div>
+            </div>
+          </div>
+        </label>
+      </div>
+      <div>
+        <p style="text-align:center;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.8rem;">Right Eye</p>
+        <label class="upload-card" id="right-card" for="right-input">
+          <input type="file" id="right-input" accept="image/*"/>
+          <div class="upload-card-inner">
+            <img class="upload-preview" id="right-preview" src="" alt=""/>
+            <div id="right-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:.6rem;">
+              <div class="upload-icon">&#128065;</div>
+              <div class="upload-label-text">Right Fundus</div>
+              <div class="upload-hint">Click or drag image</div>
+            </div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="section-label">Patient Metadata</div>
+    <div class="meta-row">
+      <div class="field-group">
+        <div class="field-label">Patient Age</div>
+        <input type="number" class="field-input" id="age-input" placeholder="e.g. 45" min="1" max="120"/>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Gender</div>
+        <select class="field-input" id="gender-input">
+          <option value="" disabled selected>Select gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="analyze-btn" id="analyze-btn">
+      <span>&#x2B21; &nbsp; Analyze Retinal Images</span>
+    </button>
+
+    <!-- ══ RESULTS ══ -->
+    <div id="results-section">
+
+      <div class="section-label">Diagnostic Summary</div>
+      <div id="summary-card-wrap"></div>
+
+      <div class="section-label">Retinal Scans — Attention Rollout Active</div>
+      <div class="eye-results-grid">
+        <div class="eye-card">
+          <div class="eye-card-header">
+            <div class="eye-card-title">Left Eye</div>
+            <div class="heatmap-toggle" id="left-toggle">Show Map</div>
+          </div>
+          <div class="eye-image-wrap">
+            <img class="eye-img" id="left-orig-img" src="" alt="Left Eye"/>
+            <img class="eye-img heatmap-layer" id="left-heat-img" src="" alt="Left Heatmap"/>
+          </div>
+        </div>
+        <div class="eye-card">
+          <div class="eye-card-header">
+            <div class="eye-card-title">Right Eye</div>
+            <div class="heatmap-toggle" id="right-toggle">Show Map</div>
+          </div>
+          <div class="eye-image-wrap">
+            <img class="eye-img" id="right-orig-img" src="" alt="Right Eye"/>
+            <img class="eye-img heatmap-layer" id="right-heat-img" src="" alt="Right Heatmap"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Disease Probability Matrix</div>
+      <div class="matrix-wrap">
+        <div class="matrix-head">
+          <div class="matrix-head-title">All Conditions — Unified Probability Analysis</div>
+        </div>
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>Condition</th>
+              <th style="min-width:200px">Probability Bar</th>
+              <th>Score</th>
+              <th>Threshold</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody id="matrix-tbody"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading-overlay">
+  <div class="scan-eye"><div class="scan-beam"></div></div>
+  <div class="loading-text" id="loading-text">Initializing Scan</div>
+</div>
+
+<!-- Error toast -->
+<div id="error-toast"></div>
+
+<script>
+/* ── Neural canvas ── */
+const canvas=document.getElementById('neural-canvas'),ctx=canvas.getContext('2d');
+function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resizeCanvas();window.addEventListener('resize',resizeCanvas);
+const nodes=Array.from({length:80},()=>({
+  x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+  vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*2+1
+}));
+function drawNeural(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  nodes.forEach(n=>{
+    n.x+=n.vx;n.y+=n.vy;
+    if(n.x<0||n.x>canvas.width)n.vx*=-1;
+    if(n.y<0||n.y>canvas.height)n.vy*=-1;
+  });
+  nodes.forEach((a,i)=>{
+    nodes.slice(i+1).forEach(b=>{
+      const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<130){
+        ctx.beginPath();
+        ctx.strokeStyle=`rgba(0,229,204,${.18*(1-d/130)})`;
+        ctx.lineWidth=.6;ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      }
+    });
+    ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,207,255,.45)';ctx.fill();
+  });
+  requestAnimationFrame(drawNeural);
+}
+drawNeural();
+
+/* ── Cursor ── */
+const cursor=document.getElementById('cursor'),dot=document.getElementById('cursor-dot');
+let cx=0,cy=0,tx=0,ty=0;
+document.addEventListener('mousemove',e=>{tx=e.clientX;ty=e.clientY;dot.style.left=tx+'px';dot.style.top=ty+'px';});
+(function ac(){cx+=(tx-cx)*.15;cy+=(ty-cy)*.15;cursor.style.left=cx+'px';cursor.style.top=cy+'px';requestAnimationFrame(ac);})();
+
+/* ── Landing → Dashboard ── */
+document.getElementById('fundus-btn').addEventListener('click',()=>{
+  document.getElementById('landing').classList.add('exit');
+  setTimeout(()=>{
+    document.getElementById('landing').style.display='none';
+    document.getElementById('dashboard').classList.add('visible');
+  },800);
+});
+
+/* ── File upload ── */
+function setupUpload(inputId,previewId,cardId,phId){
+  const input=document.getElementById(inputId),preview=document.getElementById(previewId);
+  const card=document.getElementById(cardId),ph=document.getElementById(phId);
+  function setFile(file){
+    const url=URL.createObjectURL(file);
+    preview.src=url;preview.classList.add('visible');
+    ph.style.display='none';card.classList.add('has-image');
+  }
+  input.addEventListener('change',e=>{if(e.target.files[0])setFile(e.target.files[0]);});
+  card.addEventListener('dragover',e=>{e.preventDefault();card.classList.add('dragover');});
+  card.addEventListener('dragleave',()=>card.classList.remove('dragover'));
+  card.addEventListener('drop',e=>{
+    e.preventDefault();card.classList.remove('dragover');
+    const f=e.dataTransfer.files[0];if(!f)return;
+    const dt=new DataTransfer();dt.items.add(f);input.files=dt.files;setFile(f);
+  });
+}
+setupUpload('left-input','left-preview','left-card','left-placeholder');
+setupUpload('right-input','right-preview','right-card','right-placeholder');
+
+/* ── Loading ── */
+const API='http://localhost:8000';
+const msgs=['Initializing Scan…','Processing Fundus Images…','Running Attention Fusion…','Generating Heatmaps…','Calibrating Thresholds…','Compiling Diagnosis…'];
+let mIdx=0,mTimer;
+function showLoading(){
+  document.getElementById('loading-overlay').classList.add('visible');
+  mIdx=0;document.getElementById('loading-text').textContent=msgs[0];
+  mTimer=setInterval(()=>{mIdx=(mIdx+1)%msgs.length;document.getElementById('loading-text').textContent=msgs[mIdx];},1400);
+}
+function hideLoading(){clearInterval(mTimer);document.getElementById('loading-overlay').classList.remove('visible');}
+function showError(msg){
+  const t=document.getElementById('error-toast');
+  t.textContent='⚠ '+msg;t.classList.add('visible');
+  setTimeout(()=>t.classList.remove('visible'),5000);
+}
+
+/* ── Analyze ── */
+document.getElementById('analyze-btn').addEventListener('click',async()=>{
+  const lf=document.getElementById('left-input').files[0];
+  const rf=document.getElementById('right-input').files[0];
+  const age=document.getElementById('age-input').value;
+  const gender=document.getElementById('gender-input').value;
+  if(!lf){showError('Please upload the left eye fundus image.');return;}
+  if(!rf){showError('Please upload the right eye fundus image.');return;}
+  if(!age){showError('Please enter the patient age.');return;}
+  if(!gender){showError('Please select the patient gender.');return;}
+  showLoading();
+  document.getElementById('analyze-btn').disabled=true;
+  const fd=new FormData();
+  fd.append('left_eye',lf);fd.append('right_eye',rf);
+  fd.append('age',age);fd.append('gender',gender);
+  try{
+    const resp=await fetch(`${API}/predict`,{method:'POST',body:fd});
+    if(!resp.ok){const e=await resp.json();throw new Error(e.detail||'Server error');}
+    const data=await resp.json();
+    hideLoading();renderResults(data);
+  }catch(e){
+    hideLoading();
+    showError(e.message||'Connection failed. Is the backend running on port 8000?');
+  }finally{
+    document.getElementById('analyze-btn').disabled=false;
+  }
+});
+
+/* ── Render results ── */
+function renderResults(data){
+  document.getElementById('results-section').classList.add('visible');
+
+  /* Summary card */
+  const detected=data.detected||[],isNormal=data.is_normal||(detected.length===0);
+  document.getElementById('summary-card-wrap').innerHTML=`
+    <div class="summary-card">
+      <div class="summary-icon ${isNormal?'clear':'alert'}">${isNormal?'✓':'⚠'}</div>
+      <div>
+        <div class="summary-title ${isNormal?'clear':'alert'}">
+          ${isNormal?'No Pathology Detected':`${detected.length} Condition${detected.length>1?'s':''} Detected`}
+        </div>
+        <div class="summary-desc">
+          ${isNormal
+            ?'Both retinal scans appear within normal parameters. No significant pathology identified.'
+            :'The following conditions were identified with probability exceeding the optimised thresholds.'}
+        </div>
+        ${!isNormal?`<div class="detected-tags">${detected.map(d=>`<span class="detected-tag">${d.name}</span>`).join('')}</div>`:''}
+      </div>
+    </div>`;
+
+  /* Eye original images */
+  document.getElementById('left-orig-img').src='data:image/png;base64,'+data.left_original;
+  document.getElementById('right-orig-img').src='data:image/png;base64,'+data.right_original;
+
+  /* Heatmaps — shown by default if available */
+  const lh=document.getElementById('left-heat-img');
+  const rh=document.getElementById('right-heat-img');
+  const lt=document.getElementById('left-toggle');
+  const rt=document.getElementById('right-toggle');
+
+  if(data.left_heatmap&&data.left_heatmap.length>100){
+    lh.src='data:image/png;base64,'+data.left_heatmap;
+    lh.classList.add('shown');
+    lt.classList.add('active');
+    lt.textContent='Hide Map';
+    lt.onclick=()=>toggleMap(lh,lt);
+  } else {
+    lt.textContent='No Map';lt.style.opacity='.4';lt.style.cursor='default';
+  }
+
+  if(data.right_heatmap&&data.right_heatmap.length>100){
+    rh.src='data:image/png;base64,'+data.right_heatmap;
+    rh.classList.add('shown');
+    rt.classList.add('active');
+    rt.textContent='Hide Map';
+    rt.onclick=()=>toggleMap(rh,rt);
+  } else {
+    rt.textContent='No Map';rt.style.opacity='.4';rt.style.cursor='default';
+  }
+
+  /* Unified disease probability matrix */
+  const tbody=document.getElementById('matrix-tbody');
+  tbody.innerHTML=data.results.map(r=>{
+    const pct=(r.probability*100).toFixed(1);
+    const thPct=(r.threshold*100).toFixed(1);
+    return `<tr class="${r.detected?'row-detected':''}">
+      <td><span class="m-label">${r.name}</span><span class="m-label-code">${r.label}</span></td>
+      <td class="m-bar-cell">
+        <div class="m-bar-bg">
+          <div class="m-bar-fill ${r.detected?'hot':''}" style="width:0%" data-w="${pct}"></div>
+        </div>
+      </td>
+      <td class="m-pct">${pct}%</td>
+      <td class="m-thresh">${thPct}%</td>
+      <td><span class="m-badge ${r.detected?'pos':'neg'}">${r.detected?'POSITIVE':'NEGATIVE'}</span></td>
+    </tr>`;
+  }).join('');
+
+  /* Animate bars — double rAF ensures transition fires after paint */
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    tbody.querySelectorAll('.m-bar-fill').forEach(b=>{b.style.width=b.dataset.w+'%';});
+  }));
+
+  setTimeout(()=>document.getElementById('results-section').scrollIntoView({behavior:'smooth',block:'start'}),200);
+}
+
+function toggleMap(img,btn){
+  const on=img.classList.toggle('shown');
+  btn.classList.toggle('active',on);
+  btn.textContent=on?'Hide Map':'Show Map';
+}
+</script>
+</body>
+</html>
