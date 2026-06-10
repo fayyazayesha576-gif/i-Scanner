@@ -96,8 +96,10 @@ select.field-input option{background:#030d18;}
 .scan-beam{position:absolute;width:2px;background:linear-gradient(to bottom,transparent,var(--teal),transparent);height:100%;left:50%;animation:scan-beam 1.5s ease-in-out infinite;}
 @keyframes scan-beam{0%,100%{transform:translateX(-50%) scaleY(1);opacity:.8}50%{transform:translateX(-50%) scaleY(.3);opacity:.3}}
 @keyframes scan-pulse{0%,100%{box-shadow:0 0 30px #00e5cc55}50%{box-shadow:0 0 60px #00e5ccaa}}
-.loading-text{font-family:'Orbitron',sans-serif;font-size:.75rem;letter-spacing:.3em;color:var(--teal);text-transform:uppercase;animation:text-flicker 1.5s ease infinite;}
+.loading-text{font-family:'Orbitron',sans-serif;font-size:.75rem;letter-spacing:.3em;color:var(--teal);text-transform:uppercase;animation:text-flicker 1.5s ease infinite;text-align:center;}
 @keyframes text-flicker{0%,100%{opacity:1}50%{opacity:.5}}
+.loading-sub{font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);text-transform:uppercase;text-align:center;max-width:340px;line-height:1.7;}
+.loading-timer{font-family:'Orbitron',sans-serif;font-size:.65rem;color:#1a4a60;letter-spacing:.2em;}
 
 /* ══ RESULTS ══ */
 #results-section{display:none;}
@@ -150,7 +152,7 @@ select.field-input option{background:#030d18;}
 .m-badge.neg{background:#1effa615;color:var(--green);border:1px solid #1effa625;}
 
 /* Error */
-#error-toast{position:fixed;bottom:2rem;right:2rem;z-index:200;background:#1a0508;border:1px solid var(--red);border-radius:8px;padding:1rem 1.5rem;max-width:380px;color:var(--red);font-size:.85rem;box-shadow:0 0 30px #ff3a5c44;transform:translateY(100px);opacity:0;transition:all .4s;}
+#error-toast{position:fixed;bottom:2rem;right:2rem;z-index:200;background:#1a0508;border:1px solid var(--red);border-radius:8px;padding:1rem 1.5rem;max-width:420px;color:var(--red);font-size:.85rem;box-shadow:0 0 30px #ff3a5c44;transform:translateY(100px);opacity:0;transition:all .4s;line-height:1.6;}
 #error-toast.visible{transform:translateY(0);opacity:1;}
 
 @media(max-width:700px){
@@ -176,7 +178,6 @@ select.field-input option{background:#030d18;}
     <div class="ring"></div>
     <div class="ring"></div>
     <div class="fundus-orb">
-      <!-- Realistic fundus SVG -->
       <svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <radialGradient id="bg" cx="48%" cy="45%" r="50%">
@@ -201,68 +202,37 @@ select.field-input option{background:#030d18;}
           </radialGradient>
           <clipPath id="cc"><circle cx="110" cy="110" r="108"/></clipPath>
         </defs>
-
-        <!-- Fundus background -->
         <circle cx="110" cy="110" r="108" fill="url(#bg)"/>
-        <!-- Lighter zone near disc -->
         <ellipse cx="148" cy="108" rx="38" ry="30" fill="#b84018" opacity="0.5" clip-path="url(#cc)"/>
-
-        <!-- Blood vessels -->
         <g clip-path="url(#cc)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <!-- Superior temporal artery -->
           <path d="M148 108 Q135 90 118 75 Q100 60 78 52 Q60 46 38 44" stroke="#cc2200" stroke-width="2.2"/>
           <path d="M118 75 Q105 68 88 64 Q70 60 50 58" stroke="#cc2200" stroke-width="1.3"/>
           <path d="M100 65 Q90 60 80 55 Q68 52 55 51" stroke="#cc2200" stroke-width="0.9"/>
-          <!-- Superior nasal artery -->
           <path d="M148 108 Q152 90 155 72 Q158 55 162 40" stroke="#cc2200" stroke-width="1.8"/>
           <path d="M155 72 Q160 62 168 55 Q175 48 182 44" stroke="#cc2200" stroke-width="1.1"/>
-          <!-- Inferior temporal artery -->
           <path d="M148 108 Q135 124 118 140 Q98 158 75 168 Q55 175 35 178" stroke="#cc2200" stroke-width="2.0"/>
           <path d="M118 140 Q105 148 90 152 Q72 156 54 158" stroke="#cc2200" stroke-width="1.2"/>
           <path d="M100 148 Q86 154 74 156 Q62 158 50 160" stroke="#cc2200" stroke-width="0.8"/>
-          <!-- Inferior nasal artery -->
           <path d="M148 108 Q152 124 156 140 Q160 158 162 176" stroke="#cc2200" stroke-width="1.6"/>
           <path d="M156 140 Q163 150 172 158 Q180 166 186 172" stroke="#cc2200" stroke-width="1.0"/>
-          <!-- Superior temporal vein -->
           <path d="M148 106 Q132 88 114 72 Q94 56 70 47 Q50 40 28 38" stroke="#7a0010" stroke-width="2.0"/>
           <path d="M114 72 Q100 65 84 60 Q66 55 46 52" stroke="#7a0010" stroke-width="1.2"/>
-          <!-- Inferior temporal vein -->
           <path d="M148 110 Q132 127 114 144 Q94 162 70 172 Q50 180 30 182" stroke="#7a0010" stroke-width="1.9"/>
           <path d="M114 144 Q100 152 84 157 Q68 162 50 164" stroke="#7a0010" stroke-width="1.1"/>
-          <!-- Nasal veins -->
           <path d="M148 106 Q154 88 158 68 Q162 50 164 35" stroke="#7a0010" stroke-width="1.5"/>
           <path d="M148 110 Q154 128 158 148 Q162 166 164 184" stroke="#7a0010" stroke-width="1.4"/>
-          <!-- Fine branches toward macula -->
           <path d="M100 104 Q92 100 84 98 Q74 96 64 96" stroke="#993010" stroke-width="0.7"/>
           <path d="M100 116 Q92 119 84 121 Q74 122 64 122" stroke="#993010" stroke-width="0.7"/>
-          <!-- Extra fine twigs -->
-          <path d="M90 62 Q82 57 74 54" stroke="#cc2200" stroke-width="0.6"/>
-          <path d="M78 52 Q70 48 62 47" stroke="#cc2200" stroke-width="0.5"/>
-          <path d="M90 152 Q82 156 74 158" stroke="#cc2200" stroke-width="0.6"/>
-          <path d="M75 168 Q66 173 58 175" stroke="#cc2200" stroke-width="0.5"/>
         </g>
-
-        <!-- Macula -->
         <circle cx="86" cy="110" r="16" fill="url(#macula)" clip-path="url(#cc)"/>
-        <!-- Foveal reflex -->
         <circle cx="86" cy="110" r="5" fill="url(#freflex)" clip-path="url(#cc)"/>
         <circle cx="84" cy="108" r="2" fill="#ffdd88" opacity="0.45" clip-path="url(#cc)"/>
-
-        <!-- Optic disc -->
         <circle cx="148" cy="108" r="17" fill="url(#disc)" clip-path="url(#cc)"/>
-        <!-- Cup -->
         <circle cx="149" cy="108" r="8" fill="#f0e0b0" opacity="0.75" clip-path="url(#cc)"/>
-        <!-- Disc rim highlight -->
         <path d="M137 100 Q148 94 158 100" stroke="#f8e090" stroke-width="1.2" fill="none" opacity="0.6" clip-path="url(#cc)"/>
-
-        <!-- Outer vignette -->
         <circle cx="110" cy="110" r="108" fill="none" stroke="#200400" stroke-width="10"/>
         <circle cx="110" cy="110" r="105" fill="none" stroke="#3a0800" stroke-width="4" opacity="0.6"/>
-
-        <!-- Specular reflection -->
         <ellipse cx="70" cy="72" rx="18" ry="12" fill="#ffffff" opacity="0.06" clip-path="url(#cc)"/>
-
-        <!-- iScanner teal scan line -->
         <line x1="2" y1="110" x2="218" y2="110" stroke="#00e5cc" stroke-width="1.2" opacity="0.4" clip-path="url(#cc)">
           <animate attributeName="y1" values="8;212;8" dur="3s" repeatCount="indefinite"/>
           <animate attributeName="y2" values="8;212;8" dur="3s" repeatCount="indefinite"/>
@@ -393,6 +363,8 @@ select.field-input option{background:#030d18;}
 <div id="loading-overlay">
   <div class="scan-eye"><div class="scan-beam"></div></div>
   <div class="loading-text" id="loading-text">Initializing Scan</div>
+  <div class="loading-sub">Running on CPU server — analysis takes 1–3 minutes.<br/>Please keep this tab open and do not refresh.</div>
+  <div class="loading-timer" id="loading-timer">00:00</div>
 </div>
 
 <!-- Error toast -->
@@ -467,19 +439,52 @@ setupUpload('left-input','left-preview','left-card','left-placeholder');
 setupUpload('right-input','right-preview','right-card','right-placeholder');
 
 /* ── Loading ── */
-const API='http://localhost:8000';
-const msgs=['Initializing Scan…','Processing Fundus Images…','Running Attention Fusion…','Generating Heatmaps…','Calibrating Thresholds…','Compiling Diagnosis…'];
-let mIdx=0,mTimer;
+const API='https://fayyazayesha576-i-scanner.hf.space';
+const msgs=[
+  'Initializing Scan…',
+  'Processing Fundus Images…',
+  'Running Attention Fusion…',
+  'Generating Heatmaps…',
+  'Calibrating Thresholds…',
+  'Compiling Diagnosis…',
+  'Almost There…',
+  'Finalizing Results…'
+];
+let mIdx=0,mTimer,timerInterval,startTime;
+
+function formatTime(ms){
+  const s=Math.floor(ms/1000);
+  const m=Math.floor(s/60);
+  const ss=String(s%60).padStart(2,'0');
+  return `${String(m).padStart(2,'0')}:${ss}`;
+}
+
 function showLoading(){
   document.getElementById('loading-overlay').classList.add('visible');
-  mIdx=0;document.getElementById('loading-text').textContent=msgs[0];
-  mTimer=setInterval(()=>{mIdx=(mIdx+1)%msgs.length;document.getElementById('loading-text').textContent=msgs[mIdx];},1400);
+  mIdx=0;
+  document.getElementById('loading-text').textContent=msgs[0];
+  mTimer=setInterval(()=>{
+    mIdx=(mIdx+1)%msgs.length;
+    document.getElementById('loading-text').textContent=msgs[mIdx];
+  },2000);
+  startTime=Date.now();
+  timerInterval=setInterval(()=>{
+    document.getElementById('loading-timer').textContent=formatTime(Date.now()-startTime);
+  },1000);
 }
-function hideLoading(){clearInterval(mTimer);document.getElementById('loading-overlay').classList.remove('visible');}
+
+function hideLoading(){
+  clearInterval(mTimer);
+  clearInterval(timerInterval);
+  document.getElementById('loading-overlay').classList.remove('visible');
+  document.getElementById('loading-timer').textContent='00:00';
+}
+
 function showError(msg){
   const t=document.getElementById('error-toast');
-  t.textContent='⚠ '+msg;t.classList.add('visible');
-  setTimeout(()=>t.classList.remove('visible'),5000);
+  t.innerHTML='⚠ '+msg;
+  t.classList.add('visible');
+  setTimeout(()=>t.classList.remove('visible'),8000);
 }
 
 /* ── Analyze ── */
@@ -492,19 +497,59 @@ document.getElementById('analyze-btn').addEventListener('click',async()=>{
   if(!rf){showError('Please upload the right eye fundus image.');return;}
   if(!age){showError('Please enter the patient age.');return;}
   if(!gender){showError('Please select the patient gender.');return;}
+
   showLoading();
   document.getElementById('analyze-btn').disabled=true;
+
   const fd=new FormData();
-  fd.append('left_eye',lf);fd.append('right_eye',rf);
-  fd.append('age',age);fd.append('gender',gender);
+  fd.append('left_eye',lf);
+  fd.append('right_eye',rf);
+  fd.append('age',age);
+  fd.append('gender',gender);
+
   try{
-    const resp=await fetch(`${API}/predict`,{method:'POST',body:fd});
-    if(!resp.ok){const e=await resp.json();throw new Error(e.detail||'Server error');}
+    // 5 minute timeout for slow CPU inference
+    const controller=new AbortController();
+    const timeoutId=setTimeout(()=>controller.abort(),300000);
+
+    const resp=await fetch(`${API}/predict`,{
+      method:'POST',
+      body:fd,
+      signal:controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    // Handle non-JSON responses (HuggingFace HTML error pages)
+    const contentType=resp.headers.get('content-type')||'';
+    if(!contentType.includes('application/json')){
+      const text=await resp.text();
+      if(text.includes('space is sleeping')||text.includes('sleeping')){
+        throw new Error('The server is waking up. Please wait 30 seconds and try again.');
+      }
+      if(text.includes('timeout')||text.includes('timed out')){
+        throw new Error('Request timed out on the server. The model is running on CPU — please try again, it may be faster on the second attempt.');
+      }
+      throw new Error('Server returned an unexpected response. Please try again in a moment.');
+    }
+
+    if(!resp.ok){
+      let errMsg='Server error';
+      try{const e=await resp.json();errMsg=e.detail||errMsg;}catch(e){}
+      throw new Error(errMsg);
+    }
+
     const data=await resp.json();
-    hideLoading();renderResults(data);
+    hideLoading();
+    renderResults(data);
+
   }catch(e){
     hideLoading();
-    showError(e.message||'Connection failed. Is the backend running on port 8000?');
+    if(e.name==='AbortError'){
+      showError('Request timed out after 5 minutes. The server may be overloaded — please try again.');
+    } else {
+      showError(e.message||'Connection failed. Check your internet and try again.');
+    }
   }finally{
     document.getElementById('analyze-btn').disabled=false;
   }
@@ -514,7 +559,6 @@ document.getElementById('analyze-btn').addEventListener('click',async()=>{
 function renderResults(data){
   document.getElementById('results-section').classList.add('visible');
 
-  /* Summary card */
   const detected=data.detected||[],isNormal=data.is_normal||(detected.length===0);
   document.getElementById('summary-card-wrap').innerHTML=`
     <div class="summary-card">
@@ -532,11 +576,9 @@ function renderResults(data){
       </div>
     </div>`;
 
-  /* Eye original images */
   document.getElementById('left-orig-img').src='data:image/png;base64,'+data.left_original;
   document.getElementById('right-orig-img').src='data:image/png;base64,'+data.right_original;
 
-  /* Heatmaps — shown by default if available */
   const lh=document.getElementById('left-heat-img');
   const rh=document.getElementById('right-heat-img');
   const lt=document.getElementById('left-toggle');
@@ -562,7 +604,6 @@ function renderResults(data){
     rt.textContent='No Map';rt.style.opacity='.4';rt.style.cursor='default';
   }
 
-  /* Unified disease probability matrix */
   const tbody=document.getElementById('matrix-tbody');
   tbody.innerHTML=data.results.map(r=>{
     const pct=(r.probability*100).toFixed(1);
@@ -580,7 +621,6 @@ function renderResults(data){
     </tr>`;
   }).join('');
 
-  /* Animate bars — double rAF ensures transition fires after paint */
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     tbody.querySelectorAll('.m-bar-fill').forEach(b=>{b.style.width=b.dataset.w+'%';});
   }));

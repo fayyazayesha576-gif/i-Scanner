@@ -34,6 +34,10 @@ LABEL_NAMES = {
 NUM_LABELS = len(LABELS)
 IMG_SIZE = (224, 224)
 
+# ── Skip rollout on CPU to avoid timeout (set SKIP_ROLLOUT=true in env) ───────
+SKIP_ROLLOUT = os.environ.get("SKIP_ROLLOUT", "false").lower() == "true"
+
+
 # ── Model Definition ──────────────────────────────────────────────────────────
 class AttentionFusionVit(nn.Module):
     def __init__(self, meta_dim=2, num_labels=NUM_LABELS, attn_heads=4, attn_layers=2):
@@ -85,22 +89,11 @@ class AttentionFusionVit(nn.Module):
             p.requires_grad = True
 
 
-# ── Attention Rollout (fixed) ─────────────────────────────────────────────────
+# ── Attention Rollout ─────────────────────────────────────────────────────────
 def get_attention_rollout(model, img_tensor):
-    """
-    Correct Attention Rollout for ViT-B/16.
-
-    Key fixes vs original:
-    1. Monkey-patch MHA.forward so need_weights=True, average_attn_weights=False
-       → hook receives (output, attn_weights) where attn_weights is (B,H,S,S)
-    2. mask = result[1:, 0]  — CLS *column*, not row 0
-       (row 0 of the CLS→patch matrix tells how much CLS attended TO each patch;
-        column 0 of the patch→CLS matrix is what we want for saliency)
-    """
     attentions = []
 
     def hook_fn(module, input, output):
-        # output is tuple (attn_out, attn_weights) after patching
         if isinstance(output, tuple) and len(output) >= 2:
             attn_weights = output[1]
             if attn_weights is not None:
@@ -139,20 +132,16 @@ def get_attention_rollout(model, img_tensor):
 
     logger.info(f"Captured {len(attentions)} attention layers, shape: {attentions[0].shape}")
 
-    seq_len = attentions[0].shape[-1]   # 197 for ViT-B/16 (1 CLS + 196 patches)
+    seq_len = attentions[0].shape[-1]
     result  = torch.eye(seq_len)
 
     for attn in attentions:
-        # attn: (1, num_heads, seq_len, seq_len) — B=1
-        attn_avg = attn[0].mean(dim=0)                          # (S, S)
-        attn_aug = attn_avg + torch.eye(seq_len)                # add residual
-        attn_aug = attn_aug / attn_aug.sum(dim=-1, keepdim=True)  # row-normalise
+        attn_avg = attn[0].mean(dim=0)
+        attn_aug = attn_avg + torch.eye(seq_len)
+        attn_aug = attn_aug / attn_aug.sum(dim=-1, keepdim=True)
         result   = torch.matmul(attn_aug, result)
 
-    # ── FIX: CLS column (index 0), rows 1: are the patch tokens ──────────────
-    # result shape: (seq_len, seq_len)
-    # result[i, 0] = how much patch i flows information to CLS after rollout
-    mask = result[1:, 0]       # (196,) — patch saliency w.r.t. CLS token
+    mask = result[1:, 0]
     mask = mask - mask.min()
     mask = mask / (mask.max() + 1e-8)
 
@@ -161,9 +150,8 @@ def get_attention_rollout(model, img_tensor):
 
 
 def overlay_heatmap_on_image(img_np, heatmap, alpha=0.5):
-    """Overlay JET colourmap heatmap on fundus image."""
     n_patches = len(heatmap)
-    patch_grid = int(round(n_patches ** 0.5))   # 14 for ViT-B/16
+    patch_grid = int(round(n_patches ** 0.5))
     heatmap_2d = heatmap.reshape(patch_grid, patch_grid)
 
     img_h, img_w = img_np.shape[:2]
@@ -171,7 +159,6 @@ def overlay_heatmap_on_image(img_np, heatmap, alpha=0.5):
         heatmap_2d.astype(np.float32), (img_w, img_h),
         interpolation=cv2.INTER_CUBIC
     )
-    # Normalise again after resize (cubic can introduce slight artefacts)
     heatmap_resized = (heatmap_resized - heatmap_resized.min())
     heatmap_resized = heatmap_resized / (heatmap_resized.max() + 1e-8)
 
@@ -215,9 +202,10 @@ app.add_middleware(
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 logger.info(f"Device: {device}")
+logger.info(f"SKIP_ROLLOUT: {SKIP_ROLLOUT}")
 
-model    = None
-scaler   = None
+model      = None
+scaler     = None
 thresholds = None
 
 MODEL_PATH     = os.environ.get("MODEL_PATH",     "attention_fusion_best.pth")
@@ -229,7 +217,6 @@ THRESHOLD_PATH = os.environ.get("THRESHOLD_PATH", "best_thresholds.npy")
 async def load_model():
     global model, scaler, thresholds
 
-    # Load model
     try:
         model = AttentionFusionVit().to(device)
         checkpoint = torch.load(MODEL_PATH, map_location=device, weights_only=False)
@@ -238,7 +225,6 @@ async def load_model():
         model.eval()
         logger.info("✅ Model loaded successfully")
 
-        # Quick sanity check — run one dummy forward pass
         dummy = torch.zeros(1, 3, 224, 224).to(device)
         dummy_meta = torch.zeros(1, 2).to(device)
         with torch.no_grad():
@@ -249,7 +235,6 @@ async def load_model():
         logger.error(f"❌ Model load failed: {e}")
         model = None
 
-    # Load scaler
     try:
         scaler = joblib.load(SCALER_PATH)
         logger.info("✅ Scaler loaded")
@@ -257,7 +242,6 @@ async def load_model():
         logger.warning(f"⚠️  Scaler not found ({e}) — using raw metadata values")
         scaler = None
 
-    # Load thresholds
     try:
         thresholds = np.load(THRESHOLD_PATH)
         logger.info(f"✅ Thresholds loaded: {np.round(thresholds, 3)}")
@@ -265,8 +249,8 @@ async def load_model():
         logger.warning(f"⚠️  Threshold file not found ({e}) — using 0.5 for all classes")
         thresholds = np.full(NUM_LABELS, 0.5)
 
-    # Test attention rollout on startup
-    if model is not None:
+    # Only test rollout if not skipped
+    if model is not None and not SKIP_ROLLOUT:
         try:
             dummy_img = torch.zeros(1, 3, 224, 224).to(device)
             mask = get_attention_rollout(model, dummy_img)
@@ -276,6 +260,8 @@ async def load_model():
                 logger.warning("⚠️  Attention rollout returned None on test")
         except Exception as e:
             logger.error(f"❌ Attention rollout test failed: {e}")
+    elif SKIP_ROLLOUT:
+        logger.info("⏭️  Attention rollout skipped (SKIP_ROLLOUT=true) — faster CPU inference")
 
 
 # ── Transforms ────────────────────────────────────────────────────────────────
@@ -295,10 +281,11 @@ def preprocess_image(file_bytes: bytes) -> torch.Tensor:
 @app.get("/health")
 def health():
     return {
-        "status": "ok",
+        "status":       "ok",
         "model_loaded": model is not None,
-        "device": str(device),
-        "thresholds": thresholds.tolist() if thresholds is not None else None,
+        "device":       str(device),
+        "skip_rollout": SKIP_ROLLOUT,
+        "thresholds":   thresholds.tolist() if thresholds is not None else None,
     }
 
 
@@ -351,15 +338,20 @@ async def predict(
         results.sort(key=lambda x: x["probability"], reverse=True)
 
         # Denormalised images for overlay
-        left_np  = denormalize(left_tensor[0].cpu())   # (H,W,3) float [0,1]
+        left_np  = denormalize(left_tensor[0].cpu())
         right_np = denormalize(right_tensor[0].cpu())
 
-        # ── Attention rollout ─────────────────────────────────────────
-        logger.info("Computing attention rollout for left eye…")
-        left_rollout = get_attention_rollout(model, left_tensor)
+        # ── Attention rollout (skipped if SKIP_ROLLOUT=true) ──────────────────
+        left_rollout  = None
+        right_rollout = None
 
-        logger.info("Computing attention rollout for right eye…")
-        right_rollout = get_attention_rollout(model, right_tensor)
+        if not SKIP_ROLLOUT:
+            logger.info("Computing attention rollout for left eye…")
+            left_rollout = get_attention_rollout(model, left_tensor)
+            logger.info("Computing attention rollout for right eye…")
+            right_rollout = get_attention_rollout(model, right_tensor)
+        else:
+            logger.info("⏭️  Skipping attention rollout (SKIP_ROLLOUT=true)")
 
         left_overlay_b64  = None
         right_overlay_b64 = None
@@ -369,16 +361,12 @@ async def predict(
             lo = overlay_heatmap_on_image(left_img_uint8, left_rollout)
             left_overlay_b64 = image_to_base64(lo)
             logger.info(f"✅ Left heatmap generated, b64 length: {len(left_overlay_b64)}")
-        else:
-            logger.warning("❌ Left rollout is None — no heatmap for left eye")
 
         if right_rollout is not None:
             right_img_uint8 = (right_np * 255).astype(np.uint8)
             ro = overlay_heatmap_on_image(right_img_uint8, right_rollout)
             right_overlay_b64 = image_to_base64(ro)
             logger.info(f"✅ Right heatmap generated, b64 length: {len(right_overlay_b64)}")
-        else:
-            logger.warning("❌ Right rollout is None — no heatmap for right eye")
 
         # Original images
         left_orig_b64  = image_to_base64((left_np  * 255).astype(np.uint8))
